@@ -33,18 +33,19 @@ This is a python tool that can do it all, install meshtasticd, setup all the nee
 
 This is an interactive text-based version of the above GUI application.
 This is experimental at this point, but is fully working in my testing over SSH from windows to raspberry pi.
-
-  - Copy the script to your pi
-  ```bash
-  wget https://raw.githubusercontent.com/chrismyers2000/Meshtasticd-Configuration-Tool/refs/heads/main/Command-line/meshtasticd_config_tool_CLI.py
-  ```
-
-  - Change permissions to executable
-  ```bash
-  sudo chmod +x meshtasticd_config_tool_CLI.py
-  ```
-
-  - Run the script
-  ```bash
-  ./meshtasticd_config_tool_CLI.py
-  ```
+  - Installation:
+    
+    - Copy the script to your pi
+    ```bash
+    wget https://raw.githubusercontent.com/chrismyers2000/Meshtasticd-Configuration-Tool/refs/heads/main/Command-line/meshtasticd_config_tool_CLI.py
+    ```
+  
+    - Change permissions to executable
+    ```bash
+    sudo chmod +x meshtasticd_config_tool_CLI.py
+    ```
+  
+    - Run the script
+    ```bash
+    ./meshtasticd_config_tool_CLI.py
+    ```

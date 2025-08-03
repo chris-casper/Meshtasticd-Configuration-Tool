@@ -852,7 +852,7 @@ class MeshtasticCLI:
         for action, status_key in action_options:
             if action.startswith("11."):  # Send Message
                 status = self.get_status_symbol("python_cli")
-                if status == "[green]✓[/green]":
+                if status == "[green]YES[/green]":
                     status = "[green]Ready[/green]"
                 else:
                     status = "[red]CLI Required[/red]"

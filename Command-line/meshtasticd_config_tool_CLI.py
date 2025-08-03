@@ -2111,10 +2111,10 @@ def main(ctx, verbose, config_path, log_level):
         log_level = 'DEBUG'
     
     # Check if running as root for system operations
-    if os.geteuid() != 0:
-        console.print("[red]Warning: Some operations require root privileges.[/red]")
-        console.print("[yellow]Consider running with sudo for full functionality.[/yellow]")
-        console.print()
+    #if os.geteuid() != 0:
+        #console.print("[red]Warning: Some operations require root privileges.[/red]")
+        #console.print("[yellow]Consider running with sudo for full functionality.[/yellow]")
+        #console.print()
     
     # Check SSH environment
     if 'SSH_CLIENT' in os.environ or 'SSH_TTY' in os.environ:

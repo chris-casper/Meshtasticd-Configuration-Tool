@@ -804,7 +804,8 @@ class MeshtasticCLI:
                 return f"[blue]{status}[/blue]"
         else:
             if isinstance(status, bool):
-                return "[green]✓[/green]" if status else "[red]✗[/red]"
+                return "[green]YES[/green]" if status else "[red]NO[/red]"
+                #return "[green]✓[/green]" if status else "[red]✗[/red]"
             else:
                 return f"[yellow]{status}[/yellow]"
     

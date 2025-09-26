@@ -1,9 +1,11 @@
 # Meshtasticd-Configuration-Tool
 
   
-This is a fork of the original [Meshtasticd-Configuration-Tool](https://github.com/chrismyers2000/Meshtasticd-Configuration-Tool), adding support and optimization for nebra meshtasticd nodes. 
+This is a fork of the original [Meshtasticd-Configuration-Tool](https://github.com/chrismyers2000/Meshtasticd-Configuration-Tool), adding support and optimization for nebra hardware and hats. eg neo 6m gps chips, nebra modem, common nebra hats, etc. 
 
-This is NOT yet operational.
+Will also add in the reliability scripts, GPS config, WiFi config, SDR config, tailscale, etc. 
+
+This is NOT yet operational. Do not use! 
 
   ---
 ## 1. Meshtasticd Configuration Tool (CLI only)

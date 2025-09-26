@@ -10,6 +10,8 @@ This is NOT yet operational. Do not use!
 
 # Features
 
+All the stuff that needs to be done
+
 - [ ] Nebra hardware recognition
 - [ ] Hooper hats with yaml 
 - [ ] Hooper hats CS line config automated testing
@@ -27,7 +29,7 @@ This is NOT yet operational. Do not use!
 - [ ] hardening? levels of config?
 - [ ] unbound or DNS over HTTP
 
-
+Sounds easy enough, right?
 
   ---
 ## 1. Meshtasticd Configuration Tool (CLI only)

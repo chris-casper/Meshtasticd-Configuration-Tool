@@ -3,9 +3,29 @@
   
 This is a fork of the original [Meshtasticd-Configuration-Tool](https://github.com/chrismyers2000/Meshtasticd-Configuration-Tool), adding support and optimization for nebra hardware and hats. eg neo 6m gps chips, nebra modem, common nebra hats, etc. 
 
-Will also add in the reliability scripts, GPS config, WiFi config, SDR config, tailscale, etc. 
+Adding in reliability scripts, nebra modem, GPS config, chrony config, WiFi config, SDR config, tailscale, etc. 
+MAY include hardening measures like fail2ban, ssh keys, disabling unnecessary services, logrotate,  etc. 
 
 This is NOT yet operational. Do not use! 
+
+# Features
+
+- [ ] Nebra hardware recognition
+- [ ] Hooper hats with yaml 
+- [ ] Hooper hats CS line config automated testing
+- [ ] Nebra modem
+- [ ] Nebra modem GPS
+- [ ] NEO-6M GPS config 
+- [ ] GPS system config
+- [ ] chrony config
+- [ ] Other meshtasticd hats or devices (MESHTOAD)
+- [ ] WiFi setup
+- [ ] WiFi vs AP setup?
+- [ ] SDR config
+- [ ] tailscale config
+- [ ] Raspberry PI Connect - disable/enable
+- [ ] hardening? levels of config?
+
 
   ---
 ## 1. Meshtasticd Configuration Tool (CLI only)
@@ -18,9 +38,7 @@ This is experimental at this point, but geared entirely around SSH to a Nebra Ou
 Option 7 does not work and will be removed. 
 
 
-See my [blog post](https://casper.im/Recycling-Old-Crypto-Miners/) on Nebras.
-
-Follow instructions on flashing the emmc key, reinstalling it, powering up the unit and connecting via PuTTy or SSH to the nebra. 
+See my [blog post](https://casper.im/Recycling-Old-Crypto-Miners/) on Nebras. Follow instructions on flashing the emmc key, reinstalling it, powering up the unit and connecting via [PuTTy](https://www.chiark.greenend.org.uk/~sgtatham/putty/) or SSH to the nebra. 
 
  
  - Installation:

@@ -703,6 +703,34 @@ class StatusChecker:
         except Exception as e:
             logging.error(f"Error checking Tailscale status: {e}")
             return "Error"
+    
+    def check_rpi_connect_status(self) -> str:
+        """Check Raspberry Pi Connect installation and service status
+        Returns: 'Not Installed', 'Installed', 'Enabled', 'Connected', or 'Error'
+        """
+        try:
+            # Check if package is installed
+            package_installed = self.system.check_package_installed("rpi-connect-lite")
+            if not package_installed:
+                return "Not Installed"
+            
+            # Check if service is enabled
+            service_enabled = self.system.check_service_enabled("rpi-connect-lite")
+            if not service_enabled:
+                return "Installed"
+            
+            # Check if service is active/running
+            service_active = self.system.check_service_active("rpi-connect-lite")
+            if not service_active:
+                return "Enabled"
+            
+            # Check if it's actually connected (this is harder to determine)
+            # We'll consider it "Connected" if the service is running
+            return "Connected"
+            
+        except Exception as e:
+            logging.error(f"Error checking Raspberry Pi Connect status: {e}")
+            return "Error"
 
 class ThreadManager:
     """Manages background operations with proper cleanup"""
@@ -865,6 +893,7 @@ class MeshtasticCLI:
                 "service_running": self.status_checker.check_meshtasticd_service_status(),
                 "reliability_scripts": self.status_checker.check_reliability_scripts_status(),
                 "tailscale": self.status_checker.check_tailscale_status(),
+                "rpi_connect": self.status_checker.check_rpi_connect_status(),
             }
         finally:
             progress.stop()
@@ -893,6 +922,19 @@ class MeshtasticCLI:
                 return "[red]Not Installed[/red]"
             elif status == "Installed":
                 return "[yellow]Installed[/yellow]"
+            elif status == "Connected":
+                return "[green]Connected[/green]"
+            elif status == "Error":
+                return "[orange3]Error[/orange3]"
+            else:
+                return f"[blue]{status}[/blue]"
+        elif key == "rpi_connect":
+            if status == "Not Installed":
+                return "[red]Not Installed[/red]"
+            elif status == "Installed":
+                return "[yellow]Installed[/yellow]"
+            elif status == "Enabled":
+                return "[blue]Enabled[/blue]"
             elif status == "Connected":
                 return "[green]Connected[/green]"
             elif status == "Error":
@@ -2478,13 +2520,335 @@ dtoverlay=pps-gpio,gpiopin=17
     # ----------------------------------------------------------------------------
     
     def _manage_raspberry_pi_connect(self):
-        """TODO: Raspberry PI Connect - disable/enable
+        """Manage Raspberry Pi Connect - install, enable, disable
+        - Install rpi-connect-lite package
         - Enable/disable Raspberry Pi Connect service
-        - Configure Pi Connect settings
+        - Show verification URL to user
         - Manage Pi Connect status
         """
-        logging.info("TODO: Implement Raspberry Pi Connect management")
-        console.print("[yellow]TODO: Raspberry Pi Connect management not yet implemented[/yellow]")
+        console.print("\n[bold]Raspberry Pi Connect Management[/bold]")
+        
+        # Check current status
+        current_status = self._check_rpi_connect_status()
+        
+        if current_status == "Not Installed":
+            console.print("Raspberry Pi Connect is [red]not installed[/red].")
+            if Confirm.ask("Do you want to install and enable Raspberry Pi Connect?"):
+                self._install_rpi_connect()
+        elif current_status == "Installed":
+            console.print("Raspberry Pi Connect is [yellow]installed but not enabled[/yellow].")
+            if Confirm.ask("Do you want to enable Raspberry Pi Connect?"):
+                self._enable_rpi_connect()
+        elif current_status == "Enabled":
+            console.print("Raspberry Pi Connect is [green]enabled[/green].")
+            if Confirm.ask("Do you want to disable Raspberry Pi Connect?"):
+                self._disable_rpi_connect()
+        elif current_status == "Connected":
+            console.print("Raspberry Pi Connect is [green]connected[/green].")
+            if Confirm.ask("Do you want to disable Raspberry Pi Connect?"):
+                self._disable_rpi_connect()
+        else:
+            console.print(f"Raspberry Pi Connect status: [yellow]{current_status}[/yellow]")
+    
+    def _install_rpi_connect(self):
+        """Install rpi-connect-lite package"""
+        progress = ProgressDots("Installing Raspberry Pi Connect")
+        progress.start()
+        
+        try:
+            logging.info("="*50)
+            logging.info("STARTING RPI CONNECT INSTALLATION")
+            logging.info("="*50)
+            
+            # Step 1: Update package list
+            logging.info("Step 1/4: Updating package list...")
+            result = self.system_manager.safe_apt_command(["sudo", "apt", "update"], timeout=120)
+            if result and result.returncode == 0:
+                logging.info("✅ Package list updated")
+            else:
+                logging.warning("⚠️ Package update had issues, continuing...")
+            
+            # Step 2: Install rpi-connect-lite
+            logging.info("Step 2/4: Installing rpi-connect-lite...")
+            result = self.system_manager.safe_apt_command(
+                ["sudo", "apt", "install", "-y", "rpi-connect-lite"], 
+                timeout=300
+            )
+            
+            if result and result.returncode == 0:
+                logging.info("✅ rpi-connect-lite installed successfully")
+                console.print("[green]✓ Raspberry Pi Connect installed successfully![/green]")
+            else:
+                raise InstallationError(f"Failed to install rpi-connect-lite: {result.stderr if result else 'Unknown error'}")
+            
+            # Step 3: Enable lingering
+            logging.info("Step 3/4: Enabling user lingering...")
+            self._enable_user_lingering()
+            
+            # Step 4: Enable the service
+            logging.info("Step 4/4: Enabling Raspberry Pi Connect service...")
+            self._enable_rpi_connect()
+            
+            logging.info("✅ RPI CONNECT INSTALLATION COMPLETED SUCCESSFULLY!")
+            
+        except Exception as e:
+            logging.error(f"❌ RPI CONNECT INSTALLATION ERROR: {e}")
+            console.print(f"[red]✗ Raspberry Pi Connect installation failed: {e}[/red]")
+        finally:
+            progress.stop()
+    
+    def _enable_user_lingering(self):
+        """Enable user lingering so service runs without user login"""
+        try:
+            logging.info("Enabling user lingering for Raspberry Pi Connect...")
+            
+            # Get current user
+            current_user = os.getenv('USER') or os.getenv('SUDO_USER')
+            if not current_user:
+                logging.warning("Could not determine current user for lingering")
+                return
+            
+            # Enable lingering for current user
+            result = self.system_manager.run_sudo_command(["loginctl", "enable-linger", current_user])
+            
+            if result.returncode == 0:
+                logging.info(f"✅ User lingering enabled for {current_user}")
+                console.print(f"[green]✓ User lingering enabled for {current_user}[/green]")
+                console.print("[yellow]Service will now run even when user is not logged in[/yellow]")
+            else:
+                logging.warning(f"⚠️ Failed to enable lingering: {result.stderr}")
+                console.print(f"[yellow]⚠️ Could not enable lingering: {result.stderr}[/yellow]")
+                
+        except Exception as e:
+            logging.error(f"Error enabling user lingering: {e}")
+            console.print(f"[yellow]⚠️ Error enabling lingering: {e}[/yellow]")
+    
+    def _enable_rpi_connect(self):
+        """Enable Raspberry Pi Connect and show verification URL"""
+        progress = ProgressDots("Enabling Raspberry Pi Connect")
+        progress.start()
+        
+        try:
+            logging.info("="*50)
+            logging.info("STARTING RPI CONNECT ENABLEMENT")
+            logging.info("="*50)
+            
+            # Step 1: Enable the service
+            logging.info("Step 1/3: Enabling rpi-connect-lite service...")
+            result = self.system_manager.run_sudo_command(["systemctl", "enable", "rpi-connect-lite"])
+            if result.returncode == 0:
+                logging.info("✅ Service enabled successfully")
+            else:
+                logging.warning("⚠️ Failed to enable service")
+            
+            # Step 2: Start the service
+            logging.info("Step 2/3: Starting rpi-connect-lite service...")
+            result = self.system_manager.run_sudo_command(["systemctl", "start", "rpi-connect-lite"])
+            if result.returncode == 0:
+                logging.info("✅ Service started successfully")
+            else:
+                logging.warning("⚠️ Failed to start service")
+            
+            # Step 3: Get verification URL
+            logging.info("Step 3/3: Getting verification URL...")
+            self._show_rpi_connect_url()
+            
+            logging.info("✅ RPI CONNECT ENABLEMENT COMPLETED!")
+            console.print("[green]✓ Raspberry Pi Connect enabled successfully![/green]")
+            
+        except Exception as e:
+            logging.error(f"❌ RPI CONNECT ENABLEMENT ERROR: {e}")
+            console.print(f"[red]✗ Raspberry Pi Connect enablement failed: {e}[/red]")
+        finally:
+            progress.stop()
+    
+    def _show_rpi_connect_url(self):
+        """Show the Raspberry Pi Connect verification URL to user"""
+        try:
+            logging.info("Retrieving Raspberry Pi Connect verification URL...")
+            
+            console.print("\n[bold]Raspberry Pi Connect Verification[/bold]")
+            console.print("[yellow]Please wait while we retrieve your verification URL...[/yellow]")
+            
+            # Try to get the URL from the service logs or status
+            result = self.system_manager.run_command(["systemctl", "status", "rpi-connect-lite"])
+            
+            if result.returncode == 0:
+                output = result.stdout
+                
+                # Look for URL patterns in the output
+                import re
+                url_patterns = [
+                    r'https://connect\.raspberrypi\.com/verify/[A-Z0-9-]+',
+                    r'https://connect\.rpi\.org/verify/[A-Z0-9-]+',
+                    r'https://[^/]+/verify/[A-Z0-9-]+'
+                ]
+                
+                found_url = None
+                for pattern in url_patterns:
+                    match = re.search(pattern, output)
+                    if match:
+                        found_url = match.group(0)
+                        break
+                
+                if found_url:
+                    console.print(f"\n[bold green]🔗 Verification URL:[/bold green]")
+                    console.print(f"[bold cyan]{found_url}[/bold cyan]")
+                    console.print("\n[yellow]IMPORTANT:[/yellow]")
+                    console.print("1. Copy the URL above")
+                    console.print("2. Open it in a web browser")
+                    console.print("3. Follow the instructions to verify your device")
+                    console.print("4. This will allow you to access your Pi remotely")
+                    
+                    logging.info(f"Verification URL found: {found_url}")
+                else:
+                    console.print("\n[yellow]⚠️ Verification URL not found in service output[/yellow]")
+                    
+                    # Try alternative method - check journal logs
+                    console.print("\n[yellow]Checking service logs for URL...[/yellow]")
+                    result = self.system_manager.run_command(["journalctl", "-u", "rpi-connect-lite", "--no-pager", "-n", "20"])
+                    if result.returncode == 0:
+                        log_output = result.stdout
+                        for pattern in url_patterns:
+                            match = re.search(pattern, log_output)
+                            if match:
+                                found_url = match.group(0)
+                                console.print(f"\n[bold green]🔗 Verification URL (from logs):[/bold green]")
+                                console.print(f"[bold cyan]{found_url}[/bold cyan]")
+                                console.print("\n[yellow]IMPORTANT:[/yellow]")
+                                console.print("1. Copy the URL above")
+                                console.print("2. Open it in a web browser")
+                                console.print("3. Follow the instructions to verify your device")
+                                break
+                        
+                        if not found_url:
+                            console.print("\n[yellow]⚠️ Verification URL not found in logs either[/yellow]")
+                            console.print("[cyan]Recent service logs:[/cyan]")
+                            console.print(log_output)
+            else:
+                console.print(f"\n[yellow]⚠️ Could not get service status: {result.stderr}[/yellow]")
+            
+        except Exception as e:
+            logging.error(f"Error retrieving verification URL: {e}")
+            console.print(f"[red]Error retrieving verification URL: {e}[/red]")
+    
+    def _disable_rpi_connect(self):
+        """Disable Raspberry Pi Connect service"""
+        progress = ProgressDots("Disabling Raspberry Pi Connect")
+        progress.start()
+        
+        try:
+            logging.info("="*50)
+            logging.info("STARTING RPI CONNECT DISABLEMENT")
+            logging.info("="*50)
+            
+            # Step 1: Stop the service
+            logging.info("Step 1/3: Stopping rpi-connect-lite service...")
+            result = self.system_manager.run_sudo_command(["systemctl", "stop", "rpi-connect-lite"])
+            if result.returncode == 0:
+                logging.info("✅ Service stopped successfully")
+            else:
+                logging.warning("⚠️ Failed to stop service")
+            
+            # Step 2: Disable the service
+            logging.info("Step 2/3: Disabling rpi-connect-lite service...")
+            result = self.system_manager.run_sudo_command(["systemctl", "disable", "rpi-connect-lite"])
+            if result.returncode == 0:
+                logging.info("✅ Service disabled successfully")
+            else:
+                logging.warning("⚠️ Failed to disable service")
+            
+            # Step 3: Show status
+            logging.info("Step 3/3: Checking final status...")
+            current_status = self._check_rpi_connect_status()
+            console.print(f"[green]✓ Raspberry Pi Connect disabled successfully![/green]")
+            console.print(f"[cyan]Current status: {current_status}[/cyan]")
+            
+            logging.info("✅ RPI CONNECT DISABLEMENT COMPLETED!")
+            
+        except Exception as e:
+            logging.error(f"❌ RPI CONNECT DISABLEMENT ERROR: {e}")
+            console.print(f"[red]✗ Raspberry Pi Connect disablement failed: {e}[/red]")
+        finally:
+            progress.stop()
+    
+    def _check_rpi_connect_status(self) -> str:
+        """Check Raspberry Pi Connect installation and service status
+        Returns: 'Not Installed', 'Installed', 'Enabled', 'Connected', or 'Error'
+        """
+        try:
+            # Check if package is installed
+            package_installed = self.system_manager.check_package_installed("rpi-connect-lite")
+            if not package_installed:
+                return "Not Installed"
+            
+            # Check if service is enabled
+            service_enabled = self.system_manager.check_service_enabled("rpi-connect-lite")
+            if not service_enabled:
+                return "Installed"
+            
+            # Check if service is active/running
+            service_active = self.system_manager.check_service_active("rpi-connect-lite")
+            if not service_active:
+                return "Enabled"
+            
+            # Check if it's actually connected (this is harder to determine)
+            # We'll consider it "Connected" if the service is running
+            return "Connected"
+            
+        except Exception as e:
+            logging.error(f"Error checking Raspberry Pi Connect status: {e}")
+            return "Error"
+    
+    def _remove_rpi_connect(self):
+        """Remove Raspberry Pi Connect completely"""
+        progress = ProgressDots("Removing Raspberry Pi Connect")
+        progress.start()
+        
+        try:
+            logging.info("="*50)
+            logging.info("STARTING RPI CONNECT REMOVAL")
+            logging.info("="*50)
+            
+            # Step 1: Stop and disable service
+            logging.info("Step 1/3: Stopping and disabling service...")
+            self.system_manager.run_sudo_command(["systemctl", "stop", "rpi-connect-lite"])
+            self.system_manager.run_sudo_command(["systemctl", "disable", "rpi-connect-lite"])
+            logging.info("✅ Service stopped and disabled")
+            
+            # Step 2: Remove package
+            logging.info("Step 2/3: Removing rpi-connect-lite package...")
+            result = self.system_manager.safe_apt_command(
+                ["sudo", "apt", "remove", "-y", "rpi-connect-lite"], 
+                timeout=300
+            )
+            
+            if result and result.returncode == 0:
+                logging.info("✅ Package removed successfully")
+            else:
+                logging.warning("⚠️ Package removal had issues")
+            
+            # Step 3: Clean up configuration files
+            logging.info("Step 3/3: Cleaning up configuration files...")
+            config_paths = [
+                "/etc/rpi-connect-lite",
+                "/var/lib/rpi-connect-lite"
+            ]
+            
+            for path in config_paths:
+                if os.path.exists(path):
+                    result = self.system_manager.run_sudo_command(["rm", "-rf", path])
+                    if result.returncode == 0:
+                        logging.info(f"✅ Removed {path}")
+            
+            logging.info("✅ RPI CONNECT REMOVAL COMPLETED!")
+            console.print("[green]✓ Raspberry Pi Connect has been completely removed[/green]")
+            
+        except Exception as e:
+            logging.error(f"❌ RPI CONNECT REMOVAL ERROR: {e}")
+            console.print(f"[red]✗ Raspberry Pi Connect removal failed: {e}[/red]")
+        finally:
+            progress.stop()
     
     # ----------------------------------------------------------------------------
     # SYSTEM HARDENING & SECURITY
@@ -3140,6 +3504,42 @@ def tailscale_status(ctx):
 
 @main.command()
 @click.pass_context
+def setup_rpi_connect(ctx):
+    """Setup Raspberry Pi Connect"""
+    cli = MeshtasticCLI()
+    cli._install_rpi_connect()
+
+@main.command()
+@click.pass_context
+def enable_rpi_connect(ctx):
+    """Enable Raspberry Pi Connect"""
+    cli = MeshtasticCLI()
+    cli._enable_rpi_connect()
+
+@main.command()
+@click.pass_context
+def disable_rpi_connect(ctx):
+    """Disable Raspberry Pi Connect"""
+    cli = MeshtasticCLI()
+    cli._disable_rpi_connect()
+
+@main.command()
+@click.pass_context
+def remove_rpi_connect(ctx):
+    """Remove Raspberry Pi Connect"""
+    cli = MeshtasticCLI()
+    cli._remove_rpi_connect()
+
+@main.command()
+@click.pass_context
+def rpi_connect_status(ctx):
+    """Show Raspberry Pi Connect status"""
+    cli = MeshtasticCLI()
+    current_status = cli._check_rpi_connect_status()
+    console.print(f"Raspberry Pi Connect status: {cli.get_status_symbol('rpi_connect')}")
+
+@main.command()
+@click.pass_context
 def status(ctx):
     """Show comprehensive status"""
     cli = MeshtasticCLI()
@@ -3165,6 +3565,7 @@ def status(ctx):
         ("Service Running", cli.get_status_symbol("service_running")),
         ("Reliability Scripts", cli.get_status_symbol("reliability_scripts")),
         ("Tailscale VPN", cli.get_status_symbol("tailscale")),
+        ("Raspberry Pi Connect", cli.get_status_symbol("rpi_connect")),
     ]
     
     for component, status in status_items:

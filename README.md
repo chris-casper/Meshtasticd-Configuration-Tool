@@ -25,6 +25,8 @@ This is NOT yet operational. Do not use!
 - [ ] tailscale config
 - [ ] Raspberry PI Connect - disable/enable
 - [ ] hardening? levels of config?
+- [ ] unbound or DNS over HTTP
+
 
 
   ---

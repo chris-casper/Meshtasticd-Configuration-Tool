@@ -8,9 +8,9 @@ MAY include hardening measures like fail2ban, ssh keys, disabling unnecessary se
 
 This is NOT yet operational. Do not use! 
 
-# Features
+# TODO List
 
-All the stuff that needs to be done
+All the stuff that needs to be done.
 
 - [ ] Nebra hardware recognition
 - [ ] Hooper hats with yaml 
@@ -24,12 +24,14 @@ All the stuff that needs to be done
 - [ ] WiFi setup
 - [ ] WiFi vs AP setup?
 - [ ] SDR config
-- [ ] tailscale config
+- [X] tailscale config
 - [ ] Raspberry PI Connect - disable/enable
 - [ ] hardening? levels of config?
 - [ ] unbound or DNS over HTTP
+- [X] reliability scripts
 
-Sounds easy enough, right?
+Sounds easy enough, right? No, we have to make it more difficult. Each section will have a status check, enable/config and disable. 
+
 
   ---
 ## 1. Meshtasticd Configuration Tool (CLI only)

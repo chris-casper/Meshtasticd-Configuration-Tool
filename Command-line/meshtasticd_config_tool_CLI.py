@@ -619,6 +619,90 @@ class StatusChecker:
     def check_meshtasticd_service_status(self) -> bool:
         """Check if meshtasticd service is currently running"""
         return self.system.check_service_active(self.config.PKG_NAME)
+    
+    def check_reliability_scripts_status(self) -> bool:
+        """Check if reliability scripts are installed and configured"""
+        try:
+            # Check for reliability script components
+            script_path = "/usr/local/bin/check_meshtasticd.sh"
+            log_file = "/var/log/meshtasticd_monitor.log"
+            
+            # Check if script exists and is executable
+            script_exists = os.path.exists(script_path)
+            script_executable = False
+            if script_exists:
+                stat_info = os.stat(script_path)
+                script_executable = bool(stat_info.st_mode & 0o111)  # Check execute bit
+            
+            # Check if cron jobs are configured
+            cron_configured = self._check_cron_jobs_configured()
+            
+            # Consider installed if script exists, is executable, and cron is configured
+            return script_exists and script_executable and cron_configured
+            
+        except Exception as e:
+            logging.error(f"Error checking reliability scripts status: {e}")
+            return False
+    
+    def _check_cron_jobs_configured(self) -> bool:
+        """Check if cron jobs for reliability scripts are configured"""
+        try:
+            result = self.system.run_command(["crontab", "-l"])
+            if result.returncode != 0:
+                return False
+            
+            crontab_content = result.stdout
+            
+            # Check for both required cron jobs
+            monitoring_job = "0 * * * * /usr/local/bin/check_meshtasticd.sh"
+            reboot_job = "0 1 * * 1 /sbin/reboot"
+            
+            has_monitoring = monitoring_job in crontab_content
+            has_reboot = reboot_job in crontab_content
+            
+            return has_monitoring and has_reboot
+            
+        except Exception as e:
+            logging.error(f"Error checking cron jobs: {e}")
+            return False
+    
+    def check_tailscale_status(self) -> str:
+        """Check Tailscale installation and connection status
+        Returns: 'Not Installed', 'Installed', 'Connected', or 'Error'
+        """
+        try:
+            # Check if Tailscale is installed
+            result = self.system.run_command(["which", "tailscale"])
+            if result.returncode != 0:
+                return "Not Installed"
+            
+            # Check if Tailscale is running and connected
+            result = self.system.run_command(["tailscale", "status", "--json"])
+            if result.returncode == 0:
+                try:
+                    import json
+                    status_data = json.loads(result.stdout)
+                    backend_state = status_data.get("BackendState", "")
+                    
+                    if backend_state == "Running":
+                        return "Connected"
+                    elif backend_state in ["NeedsLogin", "Stopped"]:
+                        return "Installed"
+                    else:
+                        return "Installed"
+                except:
+                    # If JSON parsing fails, try basic status check
+                    result = self.system.run_command(["tailscale", "status"])
+                    if result.returncode == 0:
+                        return "Installed"
+                    else:
+                        return "Installed"
+            else:
+                return "Installed"
+                
+        except Exception as e:
+            logging.error(f"Error checking Tailscale status: {e}")
+            return "Error"
 
 class ThreadManager:
     """Manages background operations with proper cleanup"""
@@ -779,6 +863,8 @@ class MeshtasticCLI:
                 "avahi": self.status_checker.check_avahi_status(),
                 "boot_enabled": self.status_checker.check_meshtasticd_boot_status(),
                 "service_running": self.status_checker.check_meshtasticd_service_status(),
+                "reliability_scripts": self.status_checker.check_reliability_scripts_status(),
+                "tailscale": self.status_checker.check_tailscale_status(),
             }
         finally:
             progress.stop()
@@ -798,6 +884,17 @@ class MeshtasticCLI:
                 return f"[green]{status}[/green]"
             elif status == "CLI Not Available":
                 return "[red]CLI Required[/red]"
+            elif status == "Error":
+                return "[orange3]Error[/orange3]"
+            else:
+                return f"[blue]{status}[/blue]"
+        elif key == "tailscale":
+            if status == "Not Installed":
+                return "[red]Not Installed[/red]"
+            elif status == "Installed":
+                return "[yellow]Installed[/yellow]"
+            elif status == "Connected":
+                return "[green]Connected[/green]"
             elif status == "Error":
                 return "[orange3]Error[/orange3]"
             else:
@@ -2024,6 +2121,792 @@ dtoverlay=pps-gpio,gpiopin=17
         finally:
             progress.stop()
     
+    # ============================================================================
+    # TODO SECTIONS - See README.md
+    # ============================================================================
+    # These sections contain placeholder methods for future Nebra-specific features
+    # and optimizations as outlined in the project TODO list.
+    
+    # ----------------------------------------------------------------------------
+    # HARDWARE RECOGNITION & DETECTION
+    # ----------------------------------------------------------------------------
+    
+    def _detect_nebra_hardware(self):
+        """TODO: Enhanced Nebra hardware recognition
+        - Detect Nebra Pi CM3, Pi 3, Pi 4, Pi 5
+        - Identify specific Nebra models and capabilities
+        - Check for Nebra-specific hardware features
+        """
+        logging.info("TODO: Implement Nebra hardware detection")
+        console.print("[yellow]TODO: Nebra hardware recognition not yet implemented[/yellow]")
+    
+    def _detect_hooper_hats(self):
+        """TODO: Hooper hats detection and configuration
+        - Detect Hooper HAT variants
+        - Load appropriate YAML configurations
+        - Validate CS line configurations
+        """
+        logging.info("TODO: Implement Hooper HAT detection")
+        console.print("[yellow]TODO: Hooper HAT detection not yet implemented[/yellow]")
+    
+    def _test_hooper_cs_config(self):
+        """TODO: Automated testing for Hooper HAT CS line configuration
+        - Validate CS line settings
+        - Test communication with Hooper HAT
+        - Automated configuration verification
+        """
+        logging.info("TODO: Implement Hooper CS line automated testing")
+        console.print("[yellow]TODO: Hooper CS line testing not yet implemented[/yellow]")
+    
+    # ----------------------------------------------------------------------------
+    # NEBRA MODEM & GPS CONFIGURATION
+    # ----------------------------------------------------------------------------
+    
+    def _configure_nebra_modem(self):
+        """TODO: Nebra modem configuration
+        - Setup Nebra modem hardware
+        - Configure modem parameters
+        - Enable modem functionality
+        """
+        logging.info("TODO: Implement Nebra modem configuration")
+        console.print("[yellow]TODO: Nebra modem configuration not yet implemented[/yellow]")
+    
+    def _configure_nebra_modem_gps(self):
+        """TODO: Nebra modem GPS configuration
+        - Configure GPS on Nebra modem
+        - Setup GPS parameters for modem
+        - Test GPS functionality
+        """
+        logging.info("TODO: Implement Nebra modem GPS configuration")
+        console.print("[yellow]TODO: Nebra modem GPS not yet implemented[/yellow]")
+    
+    def _configure_neo6m_gps(self):
+        """TODO: NEO-6M GPS configuration
+        - Configure NEO-6M GPS chip
+        - Setup GPS parameters
+        - Test GPS functionality
+        """
+        logging.info("TODO: Implement NEO-6M GPS configuration")
+        console.print("[yellow]TODO: NEO-6M GPS configuration not yet implemented[/yellow]")
+    
+    def _configure_gps_system(self):
+        """TODO: GPS system configuration
+        - Configure system-level GPS settings
+        - Setup GPS daemon
+        - Configure GPS time sync
+        """
+        logging.info("TODO: Implement GPS system configuration")
+        console.print("[yellow]TODO: GPS system configuration not yet implemented[/yellow]")
+    
+    def _configure_chrony(self):
+        """TODO: chrony configuration for time synchronization
+        - Configure chrony for GPS time sync
+        - Setup time server configuration
+        - Test time synchronization
+        """
+        logging.info("TODO: Implement chrony configuration")
+        console.print("[yellow]TODO: chrony configuration not yet implemented[/yellow]")
+    
+    # ----------------------------------------------------------------------------
+    # ADDITIONAL HAT & DEVICE SUPPORT
+    # ----------------------------------------------------------------------------
+    
+    def _configure_meshtoad_devices(self):
+        """TODO: Other meshtasticd hats or devices (MESHTOAD)
+        - Support for MESHTOAD devices
+        - Configuration for additional HAT types
+        - Generic HAT configuration framework
+        """
+        logging.info("TODO: Implement MESHTOAD device support")
+        console.print("[yellow]TODO: MESHTOAD device support not yet implemented[/yellow]")
+    
+    # ----------------------------------------------------------------------------
+    # NETWORK CONFIGURATION
+    # ----------------------------------------------------------------------------
+    
+    def _configure_wifi_setup(self):
+        """TODO: WiFi setup configuration
+        - Configure WiFi connections
+        - Setup WiFi credentials
+        - Test WiFi connectivity
+        """
+        logging.info("TODO: Implement WiFi setup")
+        console.print("[yellow]TODO: WiFi setup not yet implemented[/yellow]")
+    
+    def _configure_wifi_vs_ap(self):
+        """TODO: WiFi vs AP setup decision
+        - Choose between WiFi client and Access Point modes
+        - Configure appropriate mode
+        - Test selected configuration
+        """
+        logging.info("TODO: Implement WiFi vs AP setup")
+        console.print("[yellow]TODO: WiFi vs AP setup not yet implemented[/yellow]")
+
+    # SDR Subsection
+    
+    def _configure_sdr(self):
+        """TODO: SDR configuration
+        - Configure Software Defined Radio
+        - Setup SDR parameters
+        - Test SDR functionality
+        """
+        logging.info("TODO: Implement SDR configuration")
+        console.print("[yellow]TODO: SDR configuration not yet implemented[/yellow]")
+
+   # Tailscale Subsection     
+    
+    def _configure_tailscale(self):
+        """Setup Tailscale VPN
+        - Install Tailscale
+        - Configure Tailscale connection
+        - Show authentication URL for user setup
+        """
+        progress = ProgressDots("Setting up Tailscale")
+        progress.start()
+        
+        try:
+            logging.info("="*50)
+            logging.info("STARTING TAILSCALE SETUP")
+            logging.info("="*50)
+            
+            # Step 1: Check if already installed
+            logging.info("Step 1/3: Checking if Tailscale is already installed...")
+            if self._check_tailscale_installed():
+                if Confirm.ask("Tailscale is already installed. Do you want to reconfigure it?"):
+                    self._remove_tailscale()
+                else:
+                    console.print("[green]✓ Tailscale is already installed and configured[/green]")
+                    return
+            
+            # Step 2: Install Tailscale
+            logging.info("Step 2/3: Installing Tailscale...")
+            self._install_tailscale()
+            
+            # Step 3: Configure Tailscale
+            logging.info("Step 3/3: Configuring Tailscale...")
+            self._setup_tailscale_connection()
+            
+            logging.info("✅ TAILSCALE SETUP COMPLETED SUCCESSFULLY!")
+            console.print("[green]✓ Tailscale setup completed![/green]")
+            console.print("[yellow]IMPORTANT: Complete the authentication process using the URL shown above[/yellow]")
+            
+        except Exception as e:
+            logging.error(f"❌ TAILSCALE SETUP ERROR: {e}")
+            console.print(f"[red]✗ Tailscale setup failed: {e}[/red]")
+        finally:
+            progress.stop()
+    
+    def _install_tailscale(self):
+        """Install Tailscale using the official installation script"""
+        try:
+            logging.info("Installing Tailscale using official script...")
+            
+            # Download and run the installation script
+            install_cmd = ["curl", "-fsSL", "https://tailscale.com/install.sh"]
+            result = self.system_manager.run_command(install_cmd)
+            
+            if result.returncode != 0:
+                raise InstallationError("Failed to download Tailscale installation script")
+            
+            # Execute the installation script
+            install_script = result.stdout
+            result = self.system_manager.run_sudo_command(["sh"], input_text=install_script)
+            
+            if result.returncode != 0:
+                raise InstallationError(f"Tailscale installation failed: {result.stderr}")
+            
+            logging.info("✅ Tailscale installed successfully")
+            console.print("[green]✓ Tailscale installed successfully[/green]")
+            
+        except Exception as e:
+            logging.error(f"Error installing Tailscale: {e}")
+            raise InstallationError(f"Failed to install Tailscale: {e}")
+    
+    def _setup_tailscale_connection(self):
+        """Setup Tailscale connection and show authentication URL"""
+        try:
+            logging.info("Setting up Tailscale connection...")
+            
+            # Run tailscale up command
+            console.print("\n[bold]Setting up Tailscale connection...[/bold]")
+            console.print("[yellow]This will show an authentication URL that you need to visit[/yellow]")
+            console.print()
+            
+            # Use run_command with live output to show the authentication URL
+            result = self.system_manager.run_sudo_command(
+                ["tailscale", "up"], 
+                timeout=60  # Give user time to see the URL
+            )
+            
+            if result.returncode == 0:
+                logging.info("✅ Tailscale connection setup completed")
+                console.print("\n[green]✓ Tailscale connection setup completed![/green]")
+                
+                # Show any output that might contain important information
+                if result.stdout.strip():
+                    console.print("\n[cyan]Tailscale output:[/cyan]")
+                    console.print(result.stdout.strip())
+                
+                if result.stderr.strip():
+                    console.print("\n[cyan]Tailscale messages:[/cyan]")
+                    console.print(result.stderr.strip())
+                    
+            else:
+                logging.warning("⚠️ Tailscale up command had issues")
+                console.print("\n[yellow]⚠️ Tailscale setup had some issues, but may still work[/yellow]")
+                
+                if result.stderr.strip():
+                    console.print("\n[cyan]Tailscale messages:[/cyan]")
+                    console.print(result.stderr.strip())
+            
+            # Check connection status
+            self._check_tailscale_status()
+            
+        except Exception as e:
+            logging.error(f"Error setting up Tailscale connection: {e}")
+            raise InstallationError(f"Failed to setup Tailscale connection: {e}")
+    
+    def _check_tailscale_installed(self) -> bool:
+        """Check if Tailscale is installed"""
+        try:
+            # Check if tailscale binary exists
+            result = self.system_manager.run_command(["which", "tailscale"])
+            return result.returncode == 0
+            
+        except Exception as e:
+            logging.error(f"Error checking Tailscale installation: {e}")
+            return False
+    
+    def _check_tailscale_status(self):
+        """Check Tailscale connection status and display information"""
+        try:
+            logging.info("Checking Tailscale status...")
+            
+            # Check if tailscale is running
+            result = self.system_manager.run_command(["tailscale", "status"])
+            
+            if result.returncode == 0:
+                console.print("\n[bold]Tailscale Status:[/bold]")
+                console.print("[green]✓ Tailscale is running[/green]")
+                
+                # Parse and display status information
+                status_output = result.stdout.strip()
+                if status_output:
+                    console.print("\n[cyan]Connection Details:[/cyan]")
+                    lines = status_output.split('\n')
+                    for line in lines[:10]:  # Show first 10 lines
+                        if line.strip():
+                            console.print(f"  {line}")
+                
+                # Check for authentication status
+                auth_result = self.system_manager.run_command(["tailscale", "status", "--json"])
+                if auth_result.returncode == 0:
+                    try:
+                        import json
+                        status_data = json.loads(auth_result.stdout)
+                        if status_data.get("BackendState") == "Running":
+                            console.print("[green]✓ Tailscale is authenticated and connected[/green]")
+                        else:
+                            console.print("[yellow]⚠️ Tailscale may need authentication[/yellow]")
+                    except:
+                        pass
+                        
+            else:
+                console.print("\n[bold]Tailscale Status:[/bold]")
+                console.print("[red]✗ Tailscale is not running or not configured[/red]")
+                
+                if result.stderr.strip():
+                    console.print(f"[yellow]Error: {result.stderr.strip()}[/yellow]")
+            
+        except Exception as e:
+            logging.error(f"Error checking Tailscale status: {e}")
+            console.print(f"[red]Error checking Tailscale status: {e}[/red]")
+    
+    def _remove_tailscale(self):
+        """Remove Tailscale installation"""
+        progress = ProgressDots("Removing Tailscale")
+        progress.start()
+        
+        try:
+            logging.info("="*50)
+            logging.info("STARTING TAILSCALE REMOVAL")
+            logging.info("="*50)
+            
+            # Step 1: Stop Tailscale
+            logging.info("Step 1/3: Stopping Tailscale...")
+            result = self.system_manager.run_sudo_command(["tailscale", "down"])
+            if result.returncode == 0:
+                logging.info("✅ Tailscale stopped")
+            else:
+                logging.warning("⚠️ Failed to stop Tailscale")
+            
+            # Step 2: Uninstall Tailscale
+            logging.info("Step 2/3: Uninstalling Tailscale...")
+            result = self.system_manager.run_sudo_command(["apt", "remove", "-y", "tailscale"])
+            if result.returncode == 0:
+                logging.info("✅ Tailscale package removed")
+            else:
+                logging.warning("⚠️ Failed to remove Tailscale package")
+            
+            # Step 3: Clean up configuration files
+            logging.info("Step 3/3: Cleaning up configuration files...")
+            config_paths = [
+                "/etc/tailscale",
+                "/var/lib/tailscale",
+                "/etc/systemd/system/tailscale.service"
+            ]
+            
+            for path in config_paths:
+                if os.path.exists(path):
+                    result = self.system_manager.run_sudo_command(["rm", "-rf", path])
+                    if result.returncode == 0:
+                        logging.info(f"✅ Removed {path}")
+                    else:
+                        logging.warning(f"⚠️ Failed to remove {path}")
+            
+            logging.info("✅ TAILSCALE REMOVAL COMPLETED!")
+            console.print("[green]✓ Tailscale has been removed[/green]")
+            
+        except Exception as e:
+            logging.error(f"❌ TAILSCALE REMOVAL ERROR: {e}")
+            console.print(f"[red]✗ Tailscale removal failed: {e}[/red]")
+        finally:
+            progress.stop()
+    
+    # ----------------------------------------------------------------------------
+    # RASPBERRY PI CONNECT MANAGEMENT
+    # ----------------------------------------------------------------------------
+    
+    def _manage_raspberry_pi_connect(self):
+        """TODO: Raspberry PI Connect - disable/enable
+        - Enable/disable Raspberry Pi Connect service
+        - Configure Pi Connect settings
+        - Manage Pi Connect status
+        """
+        logging.info("TODO: Implement Raspberry Pi Connect management")
+        console.print("[yellow]TODO: Raspberry Pi Connect management not yet implemented[/yellow]")
+    
+    # ----------------------------------------------------------------------------
+    # SYSTEM HARDENING & SECURITY
+    # ----------------------------------------------------------------------------
+    
+    def _configure_system_hardening(self):
+        """TODO: System hardening configuration
+        - Implement fail2ban configuration
+        - Setup SSH key authentication
+        - Disable unnecessary services
+        - Configure logrotate
+        - Implement security hardening levels
+        """
+        logging.info("TODO: Implement system hardening")
+        console.print("[yellow]TODO: System hardening not yet implemented[/yellow]")
+    
+    def _configure_dns_over_http(self):
+        """TODO: unbound or DNS over HTTP configuration
+        - Configure unbound DNS resolver
+        - Setup DNS over HTTP (DoH)
+        - Test DNS configuration
+        """
+        logging.info("TODO: Implement DNS over HTTP configuration")
+        console.print("[yellow]TODO: DNS over HTTP configuration not yet implemented[/yellow]")
+    
+    # ----------------------------------------------------------------------------
+    # RELIABILITY & MONITORING SCRIPTS
+    # ----------------------------------------------------------------------------
+    
+    def _setup_reliability_scripts(self):
+        """Setup reliability scripts for meshtasticd monitoring and recovery
+        - Install monitoring script
+        - Configure cron jobs for hourly checks and weekly reboots
+        - Setup automated service restart on failure
+        """
+        progress = ProgressDots("Setting up reliability scripts")
+        progress.start()
+        
+        try:
+            logging.info("="*50)
+            logging.info("STARTING RELIABILITY SCRIPTS SETUP")
+            logging.info("="*50)
+            
+            # Step 1: Create the monitoring script
+            logging.info("Step 1/4: Creating meshtasticd monitoring script...")
+            script_content = '''#!/bin/bash
+SERVICE="meshtasticd"
+if ! pgrep -x "$SERVICE" > /dev/null; then
+    echo "$(date): $SERVICE not running, restarting..." >> /var/log/meshtasticd_monitor.log
+    systemctl restart $SERVICE
+fi
+'''
+            
+            script_path = "/usr/local/bin/check_meshtasticd.sh"
+            
+            # Write the script
+            result = self.system_manager.run_sudo_command(["tee", script_path], 
+                                                        input_text=script_content)
+            if result.returncode != 0:
+                raise InstallationError("Failed to create monitoring script")
+            
+            # Make script executable
+            result = self.system_manager.run_sudo_command(["chmod", "+x", script_path])
+            if result.returncode != 0:
+                raise InstallationError("Failed to make script executable")
+            
+            logging.info("✅ Monitoring script created successfully")
+            
+            # Step 2: Create log file if it doesn't exist
+            logging.info("Step 2/4: Ensuring log file exists...")
+            log_file = "/var/log/meshtasticd_monitor.log"
+            if not os.path.exists(log_file):
+                result = self.system_manager.run_sudo_command(["touch", log_file])
+                if result.returncode == 0:
+                    logging.info("✅ Log file created")
+                else:
+                    logging.warning("⚠️ Could not create log file")
+            else:
+                logging.info("✅ Log file already exists")
+            
+            # Step 3: Setup cron jobs
+            logging.info("Step 3/4: Setting up cron jobs...")
+            self._setup_cron_jobs()
+            
+            # Step 4: Test the script
+            logging.info("Step 4/4: Testing monitoring script...")
+            result = self.system_manager.run_command([script_path])
+            if result.returncode == 0:
+                logging.info("✅ Monitoring script test successful")
+            else:
+                logging.warning("⚠️ Monitoring script test had issues")
+            
+            logging.info("✅ RELIABILITY SCRIPTS SETUP COMPLETED SUCCESSFULLY!")
+            console.print("[green]✓ Reliability scripts installed successfully![/green]")
+            console.print("[green]• Monitoring script: /usr/local/bin/check_meshtasticd.sh[/green]")
+            console.print("[green]• Log file: /var/log/meshtasticd_monitor.log[/green]")
+            console.print("[green]• Cron jobs configured for hourly checks and weekly reboots[/green]")
+            
+        except Exception as e:
+            logging.error(f"❌ RELIABILITY SCRIPTS SETUP ERROR: {e}")
+            console.print(f"[red]✗ Reliability scripts setup failed: {e}[/red]")
+        finally:
+            progress.stop()
+    
+    def _setup_cron_jobs(self):
+        """Setup cron jobs for monitoring and weekly reboots"""
+        try:
+            logging.info("Configuring cron jobs...")
+            
+            # Get current crontab
+            result = self.system_manager.run_command(["crontab", "-l"])
+            current_crontab = result.stdout if result.returncode == 0 else ""
+            
+            # Define the cron jobs we want to add
+            monitoring_job = "0 * * * * /usr/local/bin/check_meshtasticd.sh"
+            reboot_job = "0 1 * * 1 /sbin/reboot"
+            
+            # Check if jobs already exist
+            jobs_to_add = []
+            if monitoring_job not in current_crontab:
+                jobs_to_add.append(monitoring_job)
+                logging.info("Adding hourly monitoring job")
+            else:
+                logging.info("Hourly monitoring job already exists")
+            
+            if reboot_job not in current_crontab:
+                jobs_to_add.append(reboot_job)
+                logging.info("Adding weekly reboot job")
+            else:
+                logging.info("Weekly reboot job already exists")
+            
+            # Add new jobs if any
+            if jobs_to_add:
+                new_crontab = current_crontab
+                if new_crontab and not new_crontab.endswith('\n'):
+                    new_crontab += '\n'
+                
+                for job in jobs_to_add:
+                    new_crontab += f"{job}\n"
+                    logging.info(f"Added cron job: {job}")
+                
+                # Write new crontab
+                result = self.system_manager.run_command(["crontab", "-"], 
+                                                       input_text=new_crontab)
+                if result.returncode == 0:
+                    logging.info("✅ Cron jobs updated successfully")
+                else:
+                    logging.error(f"❌ Failed to update crontab: {result.stderr}")
+                    raise InstallationError("Failed to update crontab")
+            else:
+                logging.info("✅ All required cron jobs already exist")
+                
+        except Exception as e:
+            logging.error(f"Error setting up cron jobs: {e}")
+            raise InstallationError(f"Failed to setup cron jobs: {e}")
+    
+    def _remove_reliability_scripts(self):
+        """Remove reliability scripts and cron jobs"""
+        progress = ProgressDots("Removing reliability scripts")
+        progress.start()
+        
+        try:
+            logging.info("="*50)
+            logging.info("STARTING RELIABILITY SCRIPTS REMOVAL")
+            logging.info("="*50)
+            
+            # Step 1: Remove monitoring script
+            logging.info("Step 1/3: Removing monitoring script...")
+            script_path = "/usr/local/bin/check_meshtasticd.sh"
+            if os.path.exists(script_path):
+                result = self.system_manager.run_sudo_command(["rm", script_path])
+                if result.returncode == 0:
+                    logging.info("✅ Monitoring script removed")
+                else:
+                    logging.warning("⚠️ Failed to remove monitoring script")
+            else:
+                logging.info("ℹ️ Monitoring script not found")
+            
+            # Step 2: Remove cron jobs
+            logging.info("Step 2/3: Removing cron jobs...")
+            self._remove_cron_jobs()
+            
+            # Step 3: Optionally remove log file
+            logging.info("Step 3/3: Checking log file...")
+            log_file = "/var/log/meshtasticd_monitor.log"
+            if os.path.exists(log_file):
+                if Confirm.ask("Remove the monitoring log file?"):
+                    result = self.system_manager.run_sudo_command(["rm", log_file])
+                    if result.returncode == 0:
+                        logging.info("✅ Log file removed")
+                    else:
+                        logging.warning("⚠️ Failed to remove log file")
+                else:
+                    logging.info("ℹ️ Log file preserved")
+            else:
+                logging.info("ℹ️ Log file not found")
+            
+            logging.info("✅ RELIABILITY SCRIPTS REMOVAL COMPLETED!")
+            console.print("[green]✓ Reliability scripts removed successfully![/green]")
+            
+        except Exception as e:
+            logging.error(f"❌ RELIABILITY SCRIPTS REMOVAL ERROR: {e}")
+            console.print(f"[red]✗ Reliability scripts removal failed: {e}[/red]")
+        finally:
+            progress.stop()
+    
+    def _remove_cron_jobs(self):
+        """Remove cron jobs for monitoring and weekly reboots"""
+        try:
+            logging.info("Removing cron jobs...")
+            
+            # Get current crontab
+            result = self.system_manager.run_command(["crontab", "-l"])
+            if result.returncode != 0:
+                logging.info("ℹ️ No crontab found")
+                return
+            
+            current_crontab = result.stdout
+            
+            # Define the jobs to remove
+            jobs_to_remove = [
+                "0 * * * * /usr/local/bin/check_meshtasticd.sh",
+                "0 1 * * 1 /sbin/reboot"
+            ]
+            
+            # Remove jobs
+            new_crontab_lines = []
+            removed_count = 0
+            
+            for line in current_crontab.split('\n'):
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    # Check if this line matches any job we want to remove
+                    if any(job in line for job in jobs_to_remove):
+                        logging.info(f"Removing cron job: {line}")
+                        removed_count += 1
+                        continue
+                
+                # Keep the line
+                if line:
+                    new_crontab_lines.append(line)
+            
+            if removed_count > 0:
+                # Write updated crontab
+                new_crontab = '\n'.join(new_crontab_lines)
+                if new_crontab and not new_crontab.endswith('\n'):
+                    new_crontab += '\n'
+                
+                result = self.system_manager.run_command(["crontab", "-"], 
+                                                       input_text=new_crontab)
+                if result.returncode == 0:
+                    logging.info(f"✅ Removed {removed_count} cron job(s)")
+                else:
+                    logging.error(f"❌ Failed to update crontab: {result.stderr}")
+            else:
+                logging.info("ℹ️ No matching cron jobs found to remove")
+                
+        except Exception as e:
+            logging.error(f"Error removing cron jobs: {e}")
+            raise InstallationError(f"Failed to remove cron jobs: {e}")
+    
+    def _check_reliability_scripts_installed(self) -> bool:
+        """Check if reliability scripts are installed
+        Returns True if scripts are installed, False otherwise
+        """
+        try:
+            # Check for reliability script components
+            script_path = "/usr/local/bin/check_meshtasticd.sh"
+            log_file = "/var/log/meshtasticd_monitor.log"
+            
+            # Check if script exists and is executable
+            script_exists = os.path.exists(script_path)
+            script_executable = False
+            if script_exists:
+                stat_info = os.stat(script_path)
+                script_executable = bool(stat_info.st_mode & 0o111)  # Check execute bit
+            
+            # Check if log file exists
+            log_exists = os.path.exists(log_file)
+            
+            # Check if cron jobs are configured
+            cron_configured = self._check_cron_jobs_configured()
+            
+            # Consider installed if script exists, is executable, and cron is configured
+            is_installed = script_exists and script_executable and cron_configured
+            
+            logging.info(f"Reliability scripts check:")
+            logging.info(f"  Script exists: {script_exists}")
+            logging.info(f"  Script executable: {script_executable}")
+            logging.info(f"  Log file exists: {log_exists}")
+            logging.info(f"  Cron jobs configured: {cron_configured}")
+            logging.info(f"  Overall status: {'Installed' if is_installed else 'Not installed'}")
+            
+            return is_installed
+            
+        except Exception as e:
+            logging.error(f"Error checking reliability scripts: {e}")
+            return False
+    
+    def _check_cron_jobs_configured(self) -> bool:
+        """Check if cron jobs for reliability scripts are configured"""
+        try:
+            result = self.system_manager.run_command(["crontab", "-l"])
+            if result.returncode != 0:
+                return False
+            
+            crontab_content = result.stdout
+            
+            # Check for both required cron jobs
+            monitoring_job = "0 * * * * /usr/local/bin/check_meshtasticd.sh"
+            reboot_job = "0 1 * * 1 /sbin/reboot"
+            
+            has_monitoring = monitoring_job in crontab_content
+            has_reboot = reboot_job in crontab_content
+            
+            return has_monitoring and has_reboot
+            
+        except Exception as e:
+            logging.error(f"Error checking cron jobs: {e}")
+            return False
+    
+    def _check_monitor_log(self):
+        """Check /var/log/meshtasticd_monitor.log and list service restarts and weekly reboots"""
+        log_file = "/var/log/meshtasticd_monitor.log"
+        
+        try:
+            if not os.path.exists(log_file):
+                console.print(f"[red]Monitor log file not found: {log_file}[/red]")
+                return
+            
+            console.print(f"\n[bold]Meshtastic Monitor Log Analysis[/bold]")
+            console.print(f"Log file: {log_file}")
+            
+            # Read and analyze the log file
+            with open(log_file, 'r') as f:
+                lines = f.readlines()
+            
+            if not lines:
+                console.print("[yellow]Log file is empty[/yellow]")
+                return
+            
+            # Count different types of events
+            service_restarts = []
+            weekly_reboots = []
+            other_events = []
+            
+            for line_num, line in enumerate(lines, 1):
+                line = line.strip()
+                if not line:
+                    continue
+                
+                # Look for service restart patterns
+                if any(keyword in line.lower() for keyword in ['restart', 'restarted', 'service restart']):
+                    service_restarts.append(f"Line {line_num}: {line}")
+                
+                # Look for weekly reboot patterns
+                elif any(keyword in line.lower() for keyword in ['weekly reboot', 'scheduled reboot', 'reboot']):
+                    weekly_reboots.append(f"Line {line_num}: {line}")
+                
+                # Other significant events
+                elif any(keyword in line.lower() for keyword in ['error', 'warning', 'failed', 'recovery']):
+                    other_events.append(f"Line {line_num}: {line}")
+            
+            # Display results
+            console.print(f"\n[cyan]Log Analysis Summary:[/cyan]")
+            console.print(f"Total log entries: {len(lines)}")
+            console.print(f"Service restarts: {len(service_restarts)}")
+            console.print(f"Weekly reboots: {len(weekly_reboots)}")
+            console.print(f"Other events: {len(other_events)}")
+            
+            # Show recent events (last 10 lines)
+            console.print(f"\n[cyan]Recent Log Entries (last 10):[/cyan]")
+            recent_lines = lines[-10:] if len(lines) >= 10 else lines
+            for i, line in enumerate(recent_lines, 1):
+                line = line.strip()
+                if line:
+                    console.print(f"  {len(lines) - len(recent_lines) + i:3d}: {line}")
+            
+            # Show service restarts if any
+            if service_restarts:
+                console.print(f"\n[cyan]Service Restarts ({len(service_restarts)} found):[/cyan]")
+                for restart in service_restarts[-5:]:  # Show last 5
+                    console.print(f"  {restart}")
+                if len(service_restarts) > 5:
+                    console.print(f"  ... and {len(service_restarts) - 5} more")
+            
+            # Show weekly reboots if any
+            if weekly_reboots:
+                console.print(f"\n[cyan]Weekly Reboots ({len(weekly_reboots)} found):[/cyan]")
+                for reboot in weekly_reboots[-5:]:  # Show last 5
+                    console.print(f"  {reboot}")
+                if len(weekly_reboots) > 5:
+                    console.print(f"  ... and {len(weekly_reboots) - 5} more")
+            
+            # Show other significant events if any
+            if other_events:
+                console.print(f"\n[cyan]Other Significant Events ({len(other_events)} found):[/cyan]")
+                for event in other_events[-5:]:  # Show last 5
+                    console.print(f"  {event}")
+                if len(other_events) > 5:
+                    console.print(f"  ... and {len(other_events) - 5} more")
+            
+            # Show log file info
+            stat_info = os.stat(log_file)
+            file_size = stat_info.st_size
+            modified_time = datetime.fromtimestamp(stat_info.st_mtime)
+            
+            console.print(f"\n[cyan]Log File Information:[/cyan]")
+            console.print(f"File size: {file_size:,} bytes")
+            console.print(f"Last modified: {modified_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            
+        except PermissionError:
+            console.print(f"[red]Permission denied reading log file: {log_file}[/red]")
+            console.print("[yellow]Try running with sudo for full access[/yellow]")
+        except Exception as e:
+            logging.error(f"Error reading monitor log: {e}")
+            console.print(f"[red]Error reading log file: {e}[/red]")
+    
+    # ============================================================================
+    # END TODO SECTIONS
+    # ============================================================================
+    
     def run_menu_mode(self):
         """Run the interactive menu interface - FIXED"""
         try:
@@ -2236,6 +3119,27 @@ def disable_avahi(ctx):
 
 @main.command()
 @click.pass_context
+def setup_tailscale(ctx):
+    """Setup Tailscale VPN"""
+    cli = MeshtasticCLI()
+    cli._configure_tailscale()
+
+@main.command()
+@click.pass_context
+def remove_tailscale(ctx):
+    """Remove Tailscale VPN"""
+    cli = MeshtasticCLI()
+    cli._remove_tailscale()
+
+@main.command()
+@click.pass_context
+def tailscale_status(ctx):
+    """Show Tailscale status"""
+    cli = MeshtasticCLI()
+    cli._check_tailscale_status()
+
+@main.command()
+@click.pass_context
 def status(ctx):
     """Show comprehensive status"""
     cli = MeshtasticCLI()
@@ -2259,6 +3163,8 @@ def status(ctx):
         ("Avahi Service", cli.get_status_symbol("avahi")),
         ("Boot Enabled", cli.get_status_symbol("boot_enabled")),
         ("Service Running", cli.get_status_symbol("service_running")),
+        ("Reliability Scripts", cli.get_status_symbol("reliability_scripts")),
+        ("Tailscale VPN", cli.get_status_symbol("tailscale")),
     ]
     
     for component, status in status_items:

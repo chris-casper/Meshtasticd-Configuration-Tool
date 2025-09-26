@@ -1,7 +1,7 @@
 # Meshtasticd-Configuration-Tool
 
   
-This is a fork of the original (Meshtasticd-Configuration-Tool)[https://github.com/chrismyers2000/Meshtasticd-Configuration-Tool], adding support and optimization for nebra meshtasticd nodes. 
+This is a fork of the original [Meshtasticd-Configuration-Tool](https://github.com/chrismyers2000/Meshtasticd-Configuration-Tool), adding support and optimization for nebra meshtasticd nodes. 
 
 This is NOT yet operational.
 
@@ -16,7 +16,7 @@ This is experimental at this point, but geared entirely around SSH to a Nebra Ou
 Option 7 does not work and will be removed. 
 
 
-See my (blog post)[https://casper.im/Recycling-Old-Crypto-Miners/] on Nebras.
+See my [blog post](https://casper.im/Recycling-Old-Crypto-Miners/) on Nebras.
 
 Follow instructions on flashing the emmc key, reinstalling it, powering up the unit and connecting via PuTTy or SSH to the nebra. 
 
@@ -26,7 +26,7 @@ Follow instructions on flashing the emmc key, reinstalling it, powering up the u
 	
     - Log into Nebra and paste this
     ```bash
-	# New system updates
+	# Get latest updates
     sudo apt update -y
     sudo DEBIAN_FRONTEND=noninteractive \
     apt-get -y \
